@@ -1,13 +1,56 @@
 version: '3.8'
+
 services:
-  frontend:
+  postgres-db:
+    image: postgis/postgis:13-3.1
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: servicesdatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./deploy/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - mynetwork
+
+  django-backend:
     build:
       context: .
-      dockerfile: deploy/docker/Dockerfile
-    ports:
-      - "3000:80"
+      dockerfile: ./deploy/docker/backend/Dockerfile
+    container_name: django-backend
+    command: sh -c "sleep 2 && python3 manage.py makemigrations && python3 manage.py migrate && python3 manage.py runserver 0.0.0.0:8000"
     volumes:
-      - .:/app
+      - ./backend:/backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DJANGO_SETTINGS_MODULE=applications.settings.local
+      - GDAL_LIBRARY_PATH=/usr/lib/libgdal.so
+    depends_on:
+      - postgres-db
+    networks:
+      - mynetwork
+
+  react-frontend:
+    build:
+      context: .
+      dockerfile: ./deploy/docker/frontend/Dockerfile
+    container_name: react-frontend
+    volumes:
+      - ./frontend:/app
       - /app/node_modules
-    stdin_open: true
-    tty: true
+    ports:
+      - "3000:3000"
+    depends_on:
+      - django-backend
+    networks:
+      - mynetwork
+
+volumes:
+  postgres_data:
+
+networks:
+  mynetwork:

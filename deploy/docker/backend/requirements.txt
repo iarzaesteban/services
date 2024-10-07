@@ -1,0 +1,8 @@
+Django==4.2.9
+django-cors-headers
+django_extensions
+django-recaptcha
+psycopg2-binary
+python-dateutil
+Pillow
+watchdog
